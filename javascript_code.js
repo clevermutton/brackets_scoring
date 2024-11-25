@@ -228,18 +228,19 @@ function fill_all_sheets_points_possible() {
   var champString = [];
   console.log("SheetList: " + String(sheetsList))
  
-  //Loop through sheet names here
+//Loop through sheet names here
   for (var i; i<sheetsList.length; i++){
     tabName = String(sheetsList[i])
     if (tabName != "FrontPage" && tabName!= "Scoreboard" && tabName != "Master" ){
 
       activeSheet = bracketsSS.getSheetByName(tabName);
-      console.log("StartingSheet: " + String(activeSheet.getName()))
-
+      console.log("Starting Sheet: " + String(activeSheet.getName()) + " ; sheet index" + String(i))
+      tabWinners  = get_tabs_winners_array(tabName);
+      
       //outer loop counting through rounds
       for (round=2; round<=7; round++){
         //reset vars for new round
-        rowCountingInterval = Math.pow(2,round-1);
+        rowCountingInterval = Math.pow(2,round-1); //fun formula to determine how many rows to count by per round
         roundTeamColumn = (round*2)-1
         roundScoreColumn = roundTeamColumn + 1
 
@@ -248,23 +249,25 @@ function fill_all_sheets_points_possible() {
         //innerloop counting through rows
         row = 2
         do {    //run loop from row 2 to row 64
-          spacePointsPossible = 0;
             
           //1st get the round's base value
-          spacePointsPossible = roundBasePointsList[round]
+          roundBasePoints = roundBasePointsList[round]
             
-          //2nd add the upset points value
-          //get expected seed in spot
-          teamName = activeSheet.getRange(row,roundTeamColumn).getValue();
-            if (teamName === ""){
-              console.log("Missing Pick " + String(activeSheet.getName()) + " row=" + row + " column=" + roundTeamColumn)
+          //2nd add the upset points value with base+upset
+            //get expected seed in spot
+            //teamName = activeSheet.getRange(row,roundTeamColumn).getValue(); old cell read
+            teamName = tabWinners[roundTeamColumn][row]
+            if (teamName == ""){
+              console.log("!!Invalid Pick!! " + String(activeSheet.getName()) + " row=" + row + " column=" + roundTeamColumn)
             }
-            
-          spacePointsPossible = spacePointsPossible + (teamSeedArray[teamName] - expected_seed_array[row][roundTeamColumn])
-          //console.log("Team name:" + teamName + "; Seed:" + teamSeedArray[teamName] + "; total points for space:" + spacePointsPossible)
+            //console.log(teamSeedArray[teamName])
 
-          activeSheet.getRange(row,roundScoreColumn).setValue(spacePointsPossible)
-                
+            spacePointsPossible = roundBasePoints + (teamSeedArray[teamName] - expected_seed_array[row][roundTeamColumn])
+            //console.log("Team name:" + teamName + "; Seed:" + teamSeedArray[teamName] + "; total points for space:" + spacePointsPossible)
+            
+          //3rd write value to space
+            activeSheet.getRange(row,roundScoreColumn).setValue(spacePointsPossible)
+                            
           row = row+ rowCountingInterval;
           } while (row <= 64); 
       }//end of round counter loop
