@@ -1,44 +1,41 @@
-  //UPDATES
-    //don't copy the sheet over to the main sheet right away. get long-to-solve problems if you have picks missing or messed up.
-      //instead run the fill_all_sheets_possible with that copy commented out. if suceeds, then put it back in to copy over to main sheet.
-    //I'm still hitting that 6min timeout for upste_scores_vs_master, then mark future picks incorrect, it's close with 38 entrants.
-      //to solve it have been swapping the order in call_update_all_sheets. 
-      //first update_scores_vs_master (completes in like 4 mins), then 10 sheets in the mark_futures times out. so just swap the order, run again.
-      //once past the first round it doesnt timeout, so you can update to =3 to start at round3.. works for rest of tourney
-  
   //First get everyone's brackets entered in.
     //Then delete everyone's info on Scoreboard, since this macro will fill in columns c,d,e,f.  So after this you can fill in the name/hometown stuff
     //Run the 'fill_all_sheets_points_possible' script.
     //This will go through all sheets and fill in the possible points for every game, every sheet (skips the default sheet nanes defined in outer loop statement).
-    //at the end this will copy the sheet over the Live sheet, and delete from the Staging sheet
-
-    //This will timeout, but just run int again since it will start on remaining sheets (already process are moved and deleted from this spreadsheet)
-    //after this is run once, never run it again.
+  
+  //Second - move everyones sheets to the Live Berger World Wide
+      //run move_all_sheets_to_live()
+      //this creates the sheet in the Live spreadsheet.
+      //it does NOT delete from the staging area. want backup incase errors.
+      //hold shift to highlight many sheets, then hold ctrl when clicking to delete selected sheets.
+      //Copy/paste contents from the Scoreboard and Master tab into Live
     
   //Now you are just updating the master tab with winner results.
-    //upset_scores_vs_master
-    //this goes through ALL games on all sheets, so it's not that efficient. It times out into the sweet 16.
-    //But you can update it so after the first round is over
-      //totals first round into D1
-      //starts processing in round 2, so skipping all 32 games
-      //uses the value in D1 as a start to total, instead of starting at 0.
-    //fix this so it skips the scoring if it's already marked green/red. that should save a bunch of time.
-    //last year I cheated and totaled the first round scores on top, then just used that # going forward to cumuldate the score.
-    //and did the same this year. 
+    //run call_update_all_sheets;
+
 
 //setup to run on cell edits
 //function onEdit (e){
 //   call_update_all_sheets();
 //}
 
+//after points possible all entered, then move sheets to the live spreadsheet
+function move_all_sheets_to_live(){
+  var sheetsList = get_sheet_names();
+
+  for (var i=0; i<sheetsList.length; i++){
+    console.log("moving sheet: " + sheetsList[i])
+    move_sheet_to_live(sheetsList[i]);
+  }
+}
 
 
 function call_update_all_sheets(){
-  update_scores_vs_master (2)  //pass round to start on. round 2 means start in first round
-  mark_future_picks_incorrect (2)  //pass round to start on. round 2 means start in first round
-
+  update_scores_vs_master ()
+  mark_future_picks_incorrect ()
 }
- 
+
+
 //Globals
 var app = SpreadsheetApp;
 var bracketsSS = app.getActiveSpreadsheet();
@@ -47,9 +44,8 @@ var teamSeedArray =  get_team_and_seed_array();
 const GREEN = "#BBDFB1"
 const RED = "#E9C9C9"
 
-
 //////////////////////////////////////////////
-function update_scores_vs_master(start_round) {
+function update_scores_vs_master() {
 //////////////////////////////////////////////
 //Goes through each sheet
 //Marks each pick as right/wrong and scores it
@@ -72,6 +68,7 @@ function update_scores_vs_master(start_round) {
   var activeSheet
   var currentTotal = 0;
   var nextRoundWinnerRow = 0; // This is the row in the next round where the winner of the current game would be.  i.e. round 2 winner in row 12 goes to row 10 in next round
+  start_round=2
 
   var sheetsList = get_sheet_names();
   console.log(sheetsList)
@@ -81,15 +78,11 @@ function update_scores_vs_master(start_round) {
   for (var i=0; i<sheetsList.length; i++){
     activeSheet = bracketsSS.getSheetByName(String(sheetsList[i]));
     currentWinners = get_tabs_winners_array (activeSheet.getName())
+    currentWinnerPoints = get_tabs_winners_points_array (activeSheet.getName())
     currentTotal= 0;
+    pickWorth = 0;
     console.log("doing sheet " + sheetsList[i])
 
-    
-    //FIRST ROUND OVER  this puts the first round total in D1, and starts conting with that number
-    //so you can just start at the 2nd round and use this total, saves time doesn't timeout
-    activeSheet.getRange(1,4).setValue("=sum(D2:D65)")
-    currentTotal = currentTotal + activeSheet.getRange(1,4).getValue()
-    
     //outer loop counting through rounds
     for (round=start_round; round<=7; round++){ 
 
@@ -109,9 +102,10 @@ function update_scores_vs_master(start_round) {
 
           //do comparision if master's tab is non-empty
           if (String(masterWinners[roundTeamColumn][row]) === String(currentWinners[roundTeamColumn][row])){
-            //match, mark green
-            //console.log("got a pick right")
-            currentTotal = currentTotal + activeSheet.getRange(row,roundScoreColumn).getValue()
+            //match, mark green, got pick right
+            pickWorth = Number(currentWinnerPoints[roundTeamColumn][row])
+            //console.log("pick was worth: " + pickWorth)
+            currentTotal = currentTotal + pickWorth
             activeSheet.getRange(row,roundTeamColumn).setBackground(GREEN)
             activeSheet.getRange(row,roundScoreColumn).setBackground(GREEN)
           }
@@ -122,11 +116,10 @@ function update_scores_vs_master(start_round) {
             activeSheet.getRange(row,roundTeamColumn).setBackground(RED)
             activeSheet.getRange(row,roundScoreColumn).setBackground(RED)
             activeSheet.getRange(row,roundScoreColumn).setValue(0)
-              
           }              
         }
-          row = row + rowCountingInterval
-        } while (row <=64)
+        row = row + rowCountingInterval
+      } while (row <=64)
 
     }//end of loop counting through rounds
       
@@ -147,12 +140,14 @@ function update_scores_vs_master(start_round) {
   reorder_sheets()
 }
 
-function mark_future_picks_incorrect(start_round){
+function mark_future_picks_incorrect(){
 
   var app = SpreadsheetApp;
   var bracketsSS = app.getActiveSpreadsheet();
   var sheetsList = get_sheet_names();
+
   console.log(sheetsList)
+  start_round=2;
 
   //Loop through sheet names here
   for (var i=0; i<sheetsList.length; i++){
@@ -195,12 +190,13 @@ function mark_future_picks_incorrect(start_round){
 
 }
 
-
 //////////////////////////////////////////////
 function fill_all_sheets_points_possible() {
 //////////////////////////////////////////////
 //Step through all sheets and update the points possible
 //This is only run once at the beginning when you enter people's brackets
+
+  var start_sheet_index = 0;   //allows to start on a later tab, if you have already run it once and timed out.
   
   //First build the teamSeed Array.  Key: Value array so you can easily get a team's seed from the object.  
   var app = SpreadsheetApp;
@@ -211,9 +207,9 @@ function fill_all_sheets_points_possible() {
 
   var scoreboardArray = [[]] //array to write to Scoreboard Tab
 
-  console.log(teamSeedArray)
+  //console.log(teamSeedArray)
 
-  var i = 0; //CHANGE this to start on a later sheet if desired.  0 relative.
+  var i = start_sheet_index; 
   var row;
   var round;
   var roundTeamColumn;  //= round *2 -1
@@ -224,11 +220,12 @@ function fill_all_sheets_points_possible() {
   var roundBasePointsList = [0,0,2,5,8,12,18,24]
   var sheetsList = get_sheet_names();
   var tabName
+  var tabWinners = [[]];
   var champStringList = [];
   var champString = [];
   console.log("SheetList: " + String(sheetsList))
  
-//Loop through sheet names here
+  //Loop through sheet names here
   for (var i; i<sheetsList.length; i++){
     tabName = String(sheetsList[i])
     if (tabName != "FrontPage" && tabName!= "Scoreboard" && tabName != "Master" ){
@@ -252,10 +249,10 @@ function fill_all_sheets_points_possible() {
             
           //1st get the round's base value
           roundBasePoints = roundBasePointsList[round]
+          //console.log("base points for space: " + roundBasePointsList)
             
           //2nd add the upset points value with base+upset
-            //get expected seed in spot
-            //teamName = activeSheet.getRange(row,roundTeamColumn).getValue(); old cell read
+            //get expected# seed in spot
             teamName = tabWinners[roundTeamColumn][row]
             if (teamName == ""){
               console.log("!!Invalid Pick!! " + String(activeSheet.getName()) + " row=" + row + " column=" + roundTeamColumn)
@@ -310,8 +307,6 @@ function fill_all_sheets_points_possible() {
       activeSheet.getRange("D" + String(i+4)).setValue(scoreboardArray[i][1]);
       activeSheet.getRange("E" + String(i+4)).setValue(scoreboardArray[i][2]);
       activeSheet.getRange("F" + String(i+4)).setValue(scoreboardArray[i][3]);
-
-      //move_sheet_to_live(tabName)
 
     }//end of IF statement that skips non user sheets
   } //end of sheets counter loop
@@ -449,7 +444,7 @@ function get_team_and_seed_array () {
   var teamSeedArray = {};
 
   for (row=2; row <=65; row++){
-  teamSeedArray[String(activeSheet.getRange(row,2).getValue())] = activeSheet.getRange(row,1).getValue()
+  teamSeedArray[String(activeSheet.getRange(row,2).getValue())] = activeSheet.getRange(row,1).getValue()// gets 2 values 1 by 1
   }
 
 return teamSeedArray;
@@ -590,6 +585,44 @@ function get_tabs_winners_array (tabName){
 return winnersArray
 }
 
+////////////////////////////////////////////////
+function get_tabs_winners_points_array (tabName){
+////////////////////////////////////////////////
+//same as previous function, but returns the points value for space 1 column to the right.
+
+//starts at index 3 so the columns line up nicely
+//the 'unshifts' puts 2 blanks in the beginning, so the rows line up.
+//Then you can easily access by [COLUMN][ROW] in relation to the spreadsheet view.
+
+  var app = SpreadsheetApp;
+  var bracketsSS = app.getActiveSpreadsheet();
+  var activeSheet = bracketsSS.getSheetByName(tabName);
+  
+  var winnersArray = [[]]
+  winnersArray[3] = activeSheet.getRange("D2:D65").getValues();
+  winnersArray[3].unshift("")
+  winnersArray[3].unshift("")
+  winnersArray[5] = activeSheet.getRange("F2:F65").getValues();
+  winnersArray[5].unshift("")
+  winnersArray[5].unshift("")
+  winnersArray[7] = activeSheet.getRange("H2:H65").getValues();
+  winnersArray[7].unshift("")
+  winnersArray[7].unshift("")
+  winnersArray[9] = activeSheet.getRange("J2:J65").getValues();
+  winnersArray[9].unshift("")
+  winnersArray[9].unshift("")
+  winnersArray[11] = activeSheet.getRange("L2:L65").getValues();
+  winnersArray[11].unshift("")
+  winnersArray[11].unshift("")
+  winnersArray[13] = activeSheet.getRange("N2:N65").getValues();
+  winnersArray[13].unshift("")
+  winnersArray[13].unshift("")
+
+  //console.log(winnersArray)
+
+return winnersArray
+}
+
 //////////////////////////////////
 function get_sheet_names() {
 //////////////////////////////////
@@ -640,8 +673,6 @@ function reorder_sheets(){
   var activeSheet = bracketsSS.getSheetByName("Scoreboard");
   var tabScoreOrder = activeSheet.getRange("E4:E50").getValues()
   
-
-
   for(var i=0; i<tabScoreOrder.length; i++){
     //trim off empty rows
     if (tabScoreOrder[i] == ""){
@@ -666,17 +697,13 @@ function reorder_sheets(){
 //////////////////////////////////////
 function move_sheet_to_live(sheet_name){
 
-  var stagingss = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/1pWMbywqnG2tfaN8LQO_LJwLUbAKk7IgHkVzyRWJQmS8/edit')
+  var stagingss = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/1tKTELthLc86WMVxghEuGXBMlgSL0E1CeYjaHGBXG2_0/edit');
+  
   var sheet = stagingss.getSheetByName(sheet_name);
+  //var livess = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/1TopFD2FuZ9MgGqiJ26frFdUv7raCWDQ-2qf1fiu7Kug/edit');
   var livess = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/1TopFD2FuZ9MgGqiJ26frFdUv7raCWDQ-2qf1fiu7Kug/edit');
     
   sheet.copyTo(livess).setName(sheet_name);
   stagingss.deleteSheet(sheet)
-
-}
-
-
-
-function main(){
 
 }
