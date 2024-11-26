@@ -704,6 +704,5 @@ function move_sheet_to_live(sheet_name){
   var livess = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/1TopFD2FuZ9MgGqiJ26frFdUv7raCWDQ-2qf1fiu7Kug/edit');
     
   sheet.copyTo(livess).setName(sheet_name);
-  stagingss.deleteSheet(sheet)
-
+  //stagingss.deleteSheet(sheet) not deleting incase there's problems. still got the copy
 }
