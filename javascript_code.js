@@ -32,6 +32,7 @@ function move_all_sheets_to_live(){
 
 function call_update_all_sheets(){
   update_scores_vs_master ()
+  console.log("marking future picks incorrect")
   mark_future_picks_incorrect ()
 }
 
@@ -136,7 +137,9 @@ function update_scores_vs_master() {
   activeSheet = bracketsSS.getSheetByName(String("Scoreboard"));
   activeSheet.getRange("B3").setValue(datetime)
 
+  console.log("Update scoreboard order")
   order_scoreboard_sheet()
+  console.log("re-ording sheets")
   reorder_sheets()
 }
 
@@ -146,7 +149,7 @@ function mark_future_picks_incorrect(){
   var bracketsSS = app.getActiveSpreadsheet();
   var sheetsList = get_sheet_names();
 
-  console.log(sheetsList)
+  //console.log(sheetsList)
   start_round=2;
 
   //Loop through sheet names here
