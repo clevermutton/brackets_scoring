@@ -152,7 +152,7 @@ function mark_future_picks_incorrect(){
 
   //console.log(sheetsList)
   console.log("doing future_picks_incorrect")
-  start_round=3; //round 2 meaning starting in the round with 32teams reamining. UPDATE ME to 3 after 1st round games done, update to 4 when sweet16 starts
+  start_round=2; //round 2 meaning starting in the round with 32teams reamining. UPDATE ME to 3 after 1st round games done, update to 4 when sweet16 starts
 
   //Loop through sheet names here
   for (var i=0; i<sheetsList.length; i++){
