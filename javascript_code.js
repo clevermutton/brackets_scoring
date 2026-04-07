@@ -1,6 +1,6 @@
-  //First get everyone's brackets entered in.
+  //First get everyone's brackets entered in the Staging sheet
     //Then delete everyone's info on Scoreboard, since this macro will fill in columns c,d,e,f.  So after this you can fill in the name/hometown stuff
-    //Run the 'fill_all_sheets_points_possible' script.
+    //Run the 'fill_all_sheets_points_possible' script (in staging)
     //This will go through all sheets and fill in the possible points for every game, every sheet (skips the default sheet nanes defined in outer loop statement).
   
   //Second - move everyones sheets to the Live Berger World Wide
@@ -12,12 +12,8 @@
     
   //Now you are just updating the master tab with winner results.
     //run call_update_all_sheets;
+    //automate this with a trigger, onEdit of the spreadsheet, run call_update_all_sheets
 
-
-//setup to run on cell edits
-//function onEdit (e){
-//   call_update_all_sheets();
-//}
 
 //after points possible all entered, then move sheets to the live spreadsheet
 function move_all_sheets_to_live(){
@@ -29,13 +25,13 @@ function move_all_sheets_to_live(){
   }
 }
 
-
 function call_update_all_sheets(){
+
   update_scores_vs_master ()
   console.log("marking future picks incorrect")
   mark_future_picks_incorrect ()
+  update_timestamp()
 }
-
 
 //Globals
 var app = SpreadsheetApp;
@@ -66,10 +62,12 @@ function update_scores_vs_master() {
 
   masterWinners = get_tabs_winners_array ("Master")
 
+  console.log("updating all sheets from Master tab winners")
   var activeSheet
   var currentTotal = 0;
   var nextRoundWinnerRow = 0; // This is the row in the next round where the winner of the current game would be.  i.e. round 2 winner in row 12 goes to row 10 in next round
-  start_round=2
+  
+  start_round=2 //start with round=2, meaning start with filling out the round of 32 teams.
 
   var sheetsList = get_sheet_names();
   console.log(sheetsList)
@@ -82,7 +80,7 @@ function update_scores_vs_master() {
     currentWinnerPoints = get_tabs_winners_points_array (activeSheet.getName())
     currentTotal= 0;
     pickWorth = 0;
-    console.log("doing sheet " + sheetsList[i])
+    console.log("winner/loser marks doing sheet " + sheetsList[i])
 
     //outer loop counting through rounds
     for (round=start_round; round<=7; round++){ 
@@ -128,19 +126,22 @@ function update_scores_vs_master() {
     activeSheet.getRange("P1").setValue(currentTotal);
   }
 
-  var currentDate = new Date();
-  var datetime = (currentDate.getMonth()+1) + "/"
-      + currentDate.getDate()  + " @ " 
-      + currentDate.getHours() + ":"  
-      + currentDate.getMinutes()
-
-  activeSheet = bracketsSS.getSheetByName(String("Scoreboard"));
-  activeSheet.getRange("B3").setValue(datetime)
-
   console.log("Update scoreboard order")
   order_scoreboard_sheet()
   console.log("re-ording sheets")
   reorder_sheets()
+}
+
+function update_timestamp(){
+  //updates timetamp on scoreboard sheet
+  var currentDate = new Date();
+  var datetime = (currentDate.getMonth()+1) + "/"
+      + currentDate.getDate()  + " @ " 
+      + currentDate.getHours() + ":"  
+      + currentDate.getMinutes() + "MT"
+
+  activeSheet = bracketsSS.getSheetByName(String("Scoreboard"));
+  activeSheet.getRange("B3").setValue(datetime)
 }
 
 function mark_future_picks_incorrect(){
@@ -150,13 +151,14 @@ function mark_future_picks_incorrect(){
   var sheetsList = get_sheet_names();
 
   //console.log(sheetsList)
-  start_round=2;
+  console.log("doing future_picks_incorrect")
+  start_round=3; //round 2 meaning starting in the round with 32teams reamining. UPDATE ME to 3 after 1st round games done, update to 4 when sweet16 starts
 
   //Loop through sheet names here
   for (var i=0; i<sheetsList.length; i++){
     activeSheet = bracketsSS.getSheetByName(String(sheetsList[i]));
     currentWinners = get_tabs_winners_array (activeSheet.getName())
-    console.log("doing sheet " + sheetsList[i])
+    console.log("doing future_picks_incorrect with sheet " + sheetsList[i])
 
     //outer loop counting through rounds
     for (round=start_round; round<=6; round++){
@@ -189,7 +191,8 @@ function mark_future_picks_incorrect(){
       row = row + rowCountingInterval
       } while (row <=64)  //end of counting through rows loop
     }// end of counting through rounds loop
-  }
+  }//end of stepping through sheets
+  console.log("end of marking future picks incorrect2")
 
 }
 
